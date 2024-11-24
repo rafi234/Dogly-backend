@@ -7,6 +7,8 @@ import java.util.List;
 public interface IDogService {
   DogResponse addDog(DogRequest dogRequest, MultipartFile[] files);
 
+    List<DogResponse> getLoggedUserDog();
+
   void deleteDogById(String id);
 
   DogResponse editDog(DogRequest dogRequest, MultipartFile[] files);
