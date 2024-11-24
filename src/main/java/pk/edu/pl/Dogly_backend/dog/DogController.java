@@ -24,6 +24,11 @@ public class DogController {
     return new ResponseEntity<>(dogService.addDog(dogRequest, images), HttpStatus.CREATED);
   }
 
+  @GetMapping("/user")
+  public ResponseEntity<List<DogResponse>> getLoggedUserDogs() {
+    return ResponseEntity.ok(dogService.getLoggedUserDog());
+  }
+
   @PutMapping()
   public ResponseEntity<DogResponse> editDog(@RequestPart("dog") @Valid DogRequest dogRequest,
                                              @RequestPart("imageFiles") MultipartFile[] files) {
