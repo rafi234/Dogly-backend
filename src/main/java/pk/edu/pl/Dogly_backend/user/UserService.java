@@ -27,6 +27,7 @@ import pk.edu.pl.Dogly_backend.user.user_exception.UserAlreadyExist;
 
 import javax.transaction.Transactional;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -115,6 +116,7 @@ public class UserService implements CustomUserDetailsService {
     if (userRequest.getEmail().equals(user.getEmail()) || userToCheck.getId() == null) {
       updateUser(user, userRequest);
       imageService.deleteAllUserImages(user);
+      user.setImages(new HashSet<>());
       User savedUser = userRepository.save(user);
       if (multipartFiles != null) {
         prepareImages(savedUser, multipartFiles);

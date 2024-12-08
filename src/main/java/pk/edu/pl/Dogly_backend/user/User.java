@@ -5,6 +5,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pk.edu.pl.Dogly_backend.dog.Dog;
 import pk.edu.pl.Dogly_backend.dog_ad.DogAd;
+import pk.edu.pl.Dogly_backend.image.Image;
+import pk.edu.pl.Dogly_backend.meetings.Meeting;
 import pk.edu.pl.Dogly_backend.security.role.Group;
 import pk.edu.pl.Dogly_backend.user.address.Address;
 
@@ -13,8 +15,7 @@ import java.util.*;
 
 @Entity
 @NoArgsConstructor
-@Getter
-@Setter
+@Getter @Setter
 @Table(name = "users")
 public class User {
   @Id
@@ -30,6 +31,10 @@ public class User {
   private int phoneNumber;
 
   private boolean isActive = false;
+
+
+  @OneToMany(mappedBy = "user", cascade = {CascadeType.ALL})
+  private Set<Image> images = new HashSet<>();
 
   @ManyToMany(
     cascade = {CascadeType.PERSIST, CascadeType.MERGE},
@@ -50,10 +55,19 @@ public class User {
   private List<Dog> dogs = new ArrayList<>();
 
   @OneToMany(mappedBy = "user")
+  private List<Meeting> meetings = new ArrayList<>();
+
+  @OneToMany(mappedBy = "user")
   private List<DogAd> dogAds = new ArrayList<>();
 
   @OneToMany(mappedBy = "confirmedUser")
   private Set<DogAd> confirmedDogAds = new HashSet<>();
+
+  @ManyToMany(mappedBy = "interestedUsers")
+  private Set<Meeting> interestedMeeting = new HashSet<>();
+
+  @ManyToMany(mappedBy = "goingUsers")
+  private Set<Meeting> goingMeeting = new HashSet<>();
 
   public User(UUID id, String name, String surname, String email, String password, int phoneNumber) {
     this.id = id;
