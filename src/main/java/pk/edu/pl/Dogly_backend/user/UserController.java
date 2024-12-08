@@ -7,8 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pk.edu.pl.Dogly_backend.user.dto.UserRequest;
-import pk.edu.pl.Dogly_backend.user.dto.UserResponse;
+import pk.edu.pl.Dogly_backend.user.dto.*;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -26,7 +25,7 @@ public class UserController {
   )
   public ResponseEntity<UserResponse> createUser(
     @RequestPart("user") @Valid UserRequest userRequest,
-    @RequestPart(value = "imageFiles", required = false) MultipartFile[] multipartFiles
+    @RequestPart("imageFiles") MultipartFile[] multipartFiles
   ) {
     return new ResponseEntity<>(userDetailsService.addUser(userRequest, multipartFiles), HttpStatus.CREATED);
   }
@@ -36,6 +35,10 @@ public class UserController {
     userDetailsService.setStateOfUser(false);
   }
 
+  @PostMapping("/api/authenticate")
+  public ResponseEntity<JwtResponse> createJwtToken(@RequestBody JwtRequest jwtRequest) throws Exception {
+    return new ResponseEntity<>(userDetailsService.createJwtToken(jwtRequest), HttpStatus.CREATED);
+  }
 
   @GetMapping("/api/user")
   public ResponseEntity<List<UserResponse>> getAllUsers() {
@@ -57,10 +60,18 @@ public class UserController {
     userDetailsService.deleteUser(email);
   }
 
+  @PutMapping("/api/user/update/password")
+  public ResponseEntity<PasswordChangeResponse> updatePassword(@Valid @RequestBody PasswordChangeRequest passwordChangeRequest) {
+    return ResponseEntity.ok(
+      userDetailsService.updatePassword(passwordChangeRequest.getNewPassword(), passwordChangeRequest.getId())
+    );
+  }
+
   @PutMapping(
     value = "/api/user/update",
     consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}
   )
+
   public ResponseEntity<UserResponse> updateUser(
     @RequestPart("user") UserRequest userRequest,
     @RequestPart(name = "imageFiles", required = false) MultipartFile[] multipartFiles
