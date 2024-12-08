@@ -5,24 +5,30 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import pk.edu.pl.Dogly_backend.image.Image;
+import pk.edu.pl.Dogly_backend.image.ImageService;
 import pk.edu.pl.Dogly_backend.security.authenticatedUser.IAuthenticationFacade;
 import pk.edu.pl.Dogly_backend.security.role.Group;
 import pk.edu.pl.Dogly_backend.security.role.GroupRepository;
 import pk.edu.pl.Dogly_backend.security.role.Role;
+import pk.edu.pl.Dogly_backend.security.util.JwtUtil;
 import pk.edu.pl.Dogly_backend.user.address.Address;
 import pk.edu.pl.Dogly_backend.user.address.AddressRepository;
-import pk.edu.pl.Dogly_backend.user.dto.UserRequest;
-import pk.edu.pl.Dogly_backend.user.dto.UserResponse;
+import pk.edu.pl.Dogly_backend.user.dto.*;
 import pk.edu.pl.Dogly_backend.user.user_exception.DeleteOwnerException;
+import pk.edu.pl.Dogly_backend.user.user_exception.UploadingFilesException;
 import pk.edu.pl.Dogly_backend.user.user_exception.UserAlreadyExist;
 
 import javax.transaction.Transactional;
+import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -39,6 +45,8 @@ public class UserService implements CustomUserDetailsService {
   private final IAuthenticationFacade authenticationFacade;
   private final AuthenticationManager authenticationManager;
   private final UserDetailsService userDetailsService;
+  private final ImageService imageService;
+  private final JwtUtil jwtUtil;
 
   @Override
   public UserResponse addUser(UserRequest userRequest, MultipartFile[] multipartFiles) {
@@ -58,6 +66,7 @@ public class UserService implements CustomUserDetailsService {
     user.setAddress(address);
     addressRepository.save(address);
     User savedUser = userRepository.save(user);
+    prepareImages(savedUser, multipartFiles);
     return new UserResponse(savedUser);
   }
 
@@ -84,6 +93,15 @@ public class UserService implements CustomUserDetailsService {
   }
 
   @Override
+  public PasswordChangeResponse updatePassword(String newPassword, String email) {
+    User user = userRepository.findByEmailIgnoreCase(email)
+      .orElseThrow(() -> new UsernameNotFoundException("User with email: " + email + " not found!"));
+    user.setPassword(passwordEncoder.encode(newPassword));
+    userRepository.save(user);
+    return new PasswordChangeResponse(user.getEmail(), "Password changed successfully!");
+  }
+
+  @Override
   public void setStateOfUser(boolean state) {
     User user = authenticationFacade.getAuthentication();
     user.setActive(state);
@@ -96,10 +114,25 @@ public class UserService implements CustomUserDetailsService {
     User userToCheck = userRepository.findByEmailIgnoreCase(user.getEmail()).orElse(new User());
     if (userRequest.getEmail().equals(user.getEmail()) || userToCheck.getId() == null) {
       updateUser(user, userRequest);
+      imageService.deleteAllUserImages(user);
       User savedUser = userRepository.save(user);
+      if (multipartFiles != null) {
+        prepareImages(savedUser, multipartFiles);
+      }
       return new UserResponse(savedUser);
     }
     throw new UserAlreadyExist("User with email: " + userRequest.getEmail() + " already exist!");
+  }
+
+  @Override
+  public JwtResponse createJwtToken(JwtRequest jwtRequest) throws Exception {
+    authenticate(jwtRequest.getEmail(), jwtRequest.getPassword());
+
+    UserDetails userDetails = userDetailsService.loadUserByUsername(jwtRequest.getEmail());
+    String token = jwtUtil.generateToken(userDetails);
+
+    User user = userRepository.findByEmailIgnoreCase(jwtRequest.getEmail()).get();
+    return new JwtResponse(new UserResponse(user), token);
   }
 
   @Override
@@ -188,5 +221,19 @@ public class UserService implements CustomUserDetailsService {
     if (newCity != null) {
       user.setPhoneNumber(newPhoneNumber);
     }
+  }
+
+  private void prepareImages(User savedUser, MultipartFile[] files) {
+    try {
+      Set<Image> images = imageService.uploadImage(files);
+
+      images.forEach(i -> {
+        i.setUser(savedUser);
+        imageService.saveImage(i);
+      });
+    } catch (IOException e) {
+      throw new UploadingFilesException("Problems with uploading files!");
+    }
+
   }
 }
