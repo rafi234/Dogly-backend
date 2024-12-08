@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import pk.edu.pl.Dogly_backend.security.annotation.IsAdminOrOwner;
 import pk.edu.pl.Dogly_backend.user.dto.UserResponse;
 
 @RestController
@@ -16,6 +17,7 @@ public class SecurityController {
   final private SecurityService securityService;
 
   @PutMapping("/api/grant/user/{id}")
+  @IsAdminOrOwner
   public ResponseEntity<UserResponse> grantPermissions(
     @RequestParam String role,
     @RequestParam String action,
